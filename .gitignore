@@ -1,0 +1,5 @@
+# Machine-local Claude Code settings (session permission grants) — never commit
+.claude/settings.local.json
+
+# Per-task working notes (disposable task memory)
+.claude/tasks/

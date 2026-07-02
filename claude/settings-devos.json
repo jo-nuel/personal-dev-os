@@ -1,0 +1,25 @@
+{
+  "model": "sonnet",
+  "effortLevel": "high",
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Edit(./.env)",
+      "Read(./**/.env)",
+      "Edit(./**/.env)",
+      "Read(./.env.local)",
+      "Edit(./.env.local)",
+      "Read(./**/.env.local)",
+      "Read(./.env.development)",
+      "Read(./.env.production)",
+      "Read(./**/.env.development)",
+      "Read(./**/.env.production)",
+      "Read(./secrets/**)",
+      "Edit(./secrets/**)",
+      "Read(./**/secrets/**)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.claude/.credentials.json)"
+    ]
+  }
+}
