@@ -66,4 +66,14 @@ committed `.claude/settings.json`), open a fresh Claude Code session and run:
 | 2026-07-02 | Deny rule (exact `./` match) added to newly created project `.claude/settings.json`, Read attempted mid-session | NOT enforced — settings file created after session start is not loaded mid-session (VS Code extension 2.1.198). Not a pattern failure. |
 | 2026-07-02 | Same for `~/`-path rule targeting scratchpad fake `.env` | NOT enforced — same reload limitation |
 | 2026-07-02 | Enforcement + `**` nesting + `.env.example` allowance + Bash/PowerShell command coverage | DEFERRED to fresh-session test (procedure above) — must pass before the rules are trusted |
+| 2026-07-03 | Fresh session, active model | Confirmed Sonnet |
+| 2026-07-03 | Fresh session, global DevOS `CLAUDE.md` instructions | Confirmed loaded |
+| 2026-07-03 | Read root `.env` | DENIED (pass) |
+| 2026-07-03 | Read nested `.env` (`nested/app/.env`) | DENIED (pass, validates `**` nesting) |
+| 2026-07-03 | Read `secrets/key.txt` | DENIED (pass) |
+| 2026-07-03 | Read `.env.example` | ALLOWED, readable (pass) |
+| 2026-07-03 | Built-in Edit on `.env` | DENIED (pass) |
+| 2026-07-03 | Built-in Write on `.env` / nested `.env` / `secrets/key.txt` | DENIED — Claude Code's Edit permission category also covers built-in file-editing operations such as Write, not just the Edit tool |
+| 2026-07-03 | PowerShell/Bash direct-read coverage (`cat .env`, `Get-Content .env`) | INCONCLUSIVE — no blocked fixture file could be created to test against, so shell-level enforcement was not proven either way |
+| 2026-07-03 | Arbitrary subprocess access | Not tested; remains outside the guarantees of ordinary Read/Edit permission rules unless stronger sandbox restrictions are enabled |
 <!-- Filled by future re-tests. -->
