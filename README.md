@@ -34,9 +34,9 @@ preservation check aborts if any other setting would change; JSON validated
 before writing; assets tracked in `~/.claude/.devos-manifest.json` and never
 overwrite anything DevOS didn't install.
 
-## M3: personal skills
+## Personal skills
 
-Four manual-only skills (`disable-model-invocation: true` — they never auto-fire,
+Five manual-only skills (`disable-model-invocation: true` — they never auto-fire,
 only run when you type the command). `sync.ps1` installs them from
 `claude/skills/devos-*` into `~/.claude/skills/`; a fresh Claude Code session is
 required after the first install for them to appear.
@@ -47,6 +47,7 @@ required after the first install for them to appear.
 | `/devos-decision` | `/devos-decision "Use PostgreSQL for prod"` | `docs/decisions/*.md` in the current repo | No |
 | `/devos-promote` | `/devos-promote all` | `brain/standards/`, `brain/playbooks/`, `brain/reviews/`, `brain/projects.md` (only after explicit per-candidate approval) | No |
 | `/devos-repo-brief` | `/devos-repo-brief "focus on deployment"` | nothing | Yes — runs in a forked `Explore` sub-agent with `Edit`/`Write`/`NotebookEdit` removed |
+| `/devos-mvp-spec` | `/devos-mvp-spec "invoice reminder SaaS"` | `docs/product/*.md` and `docs/STATUS.md` in the current repo (only after explicit approval) | No |
 
 None of these commit or push; that stays a manual, explicit step.
 
