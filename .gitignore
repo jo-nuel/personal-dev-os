@@ -3,3 +3,7 @@
 
 # Per-task working notes (disposable task memory)
 .claude/tasks/
+
+# Mission-control run state (artifact URL + generated dashboard) — machine-local
+.claude/mission-control.json
+.claude/mission-control.html

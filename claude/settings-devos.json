@@ -1,6 +1,44 @@
 {
   "model": "sonnet",
   "effortLevel": "high",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\Users\\Jonathan\\Projects\\personal-dev-os\\scripts\\hook-session-start.ps1\"",
+            "timeout": 15,
+            "statusMessage": "DevOS session context"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\Users\\Jonathan\\Projects\\personal-dev-os\\scripts\\hook-guard-force-push.ps1\"",
+            "if": "Bash(git *)",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\Users\\Jonathan\\Projects\\personal-dev-os\\scripts\\hook-guard-force-push.ps1\"",
+            "if": "PowerShell(git *)",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "deny": [
       "Read(./.env)",
