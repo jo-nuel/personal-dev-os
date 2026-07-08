@@ -1,6 +1,9 @@
 {
   "model": "sonnet",
   "effortLevel": "high",
+  "attribution": {
+    "commit": ""
+  },
   "hooks": {
     "SessionStart": [
       {
