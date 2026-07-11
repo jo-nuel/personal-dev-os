@@ -10,6 +10,7 @@ claude/                 DevOS-managed Claude Code config (source of truth)
   CLAUDE.md             global operating instructions -> synced to ~/.claude/CLAUDE.md
   settings-devos.json   DevOS-owned settings fields (model, effort, hooks, secret deny rules)
   skills/               devos-* skills -> synced to ~/.claude/skills/
+  skills/external/      vendored third-party skills -> synced to ~/.claude/skills/
 brain/                  second brain (cross-project knowledge only)
   standards/            permanent personal standards
   playbooks/            symptom-indexed troubleshooting knowledge
@@ -53,6 +54,19 @@ required after the first install for them to appear.
 | `/devos-mission-control` | `/devos-mission-control` | only gitignored `.claude/mission-control.{json,html}` in this repo (artifact URL state + generated dashboard) | Read-only everywhere else — scan script never touches other repos |
 
 None of these commit or push; that stays a manual, explicit step.
+
+## External skills
+
+Third-party skills (not authored by DevOS) are vendored into `claude/skills/external/`
+so they're backed up and reproducible the same way as `devos-*` skills — `sync.ps1`
+installs from both directories. Each vendored skill's origin repo, commit, and vendor
+date is tracked in `claude/skills/external/SOURCES.md`; edit upstream and re-vendor
+rather than modifying a vendored skill in place. Currently vendored: five skills from
+[vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) (`web-design-guidelines`,
+`react-best-practices`, `composition-patterns`, `react-view-transitions`, `react-native-skills`),
+plus `frontend-design` from [anthropics/skills](https://github.com/anthropics/skills).
+Unlike the manual-only `devos-*` skills, these are model-invocable per their own
+frontmatter — Claude may use them automatically when relevant.
 
 ## Hooks
 

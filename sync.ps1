@@ -41,6 +41,7 @@ $RepoRoot         = Split-Path -Parent $MyInvocation.MyCommand.Path
 $DevosFragment    = Join-Path $RepoRoot 'claude\settings-devos.json'
 $DevosClaudeMd    = Join-Path $RepoRoot 'claude\CLAUDE.md'
 $DevosSkillsDir   = Join-Path $RepoRoot 'claude\skills'
+$ExternalSkillsDir = Join-Path $RepoRoot 'claude\skills\external'
 $UserClaudeDir    = if ($TargetDir) { $TargetDir } else { Join-Path $env:USERPROFILE '.claude' }
 $UserSettings     = Join-Path $UserClaudeDir 'settings.json'
 $UserClaudeMd     = Join-Path $UserClaudeDir 'CLAUDE.md'
@@ -164,10 +165,20 @@ try { $null = $mergedJson | ConvertFrom-Json } catch {
 
 # ------------------------------------------------------------ plan assets ---
 $assetActions = @()
-$repoSkills = @()
+# Skill sources: DevOS-authored (claude\skills\devos-*) plus vendored third-party
+# skills (claude\skills\external\*, any folder name — see external\SOURCES.md).
+$skillSources = @{}
 if (Test-Path $DevosSkillsDir) {
-    $repoSkills = @(Get-ChildItem -Directory $DevosSkillsDir | Where-Object { $_.Name -like 'devos-*' } | Select-Object -ExpandProperty Name)
+    Get-ChildItem -Directory $DevosSkillsDir | Where-Object { $_.Name -like 'devos-*' } | ForEach-Object {
+        $skillSources[$_.Name] = $_.FullName
+    }
 }
+if (Test-Path $ExternalSkillsDir) {
+    Get-ChildItem -Directory $ExternalSkillsDir | ForEach-Object {
+        $skillSources[$_.Name] = $_.FullName
+    }
+}
+$repoSkills = @($skillSources.Keys)
 foreach ($skill in $repoSkills) {
     $dest = Join-Path $UserSkillsDir $skill
     if ((Test-Path $dest) -and (@($manifest.skills) -notcontains $skill)) {
@@ -237,7 +248,7 @@ foreach ($skill in $repoSkills) {
     $dest = Join-Path $UserSkillsDir $skill
     if ((Test-Path $dest) -and (@($manifest.skills) -notcontains $skill)) { continue }
     if (Test-Path $dest) { Remove-Item $dest -Recurse -Force }
-    Copy-Item (Join-Path $DevosSkillsDir $skill) $dest -Recurse
+    Copy-Item $skillSources[$skill] $dest -Recurse
     $installedSkills += $skill
     Write-Host "Installed skill: $skill"
 }
