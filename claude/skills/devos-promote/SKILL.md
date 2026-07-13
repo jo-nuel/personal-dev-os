@@ -20,7 +20,7 @@ This skill only ever operates on the DevOS source repository, never the current 
    - contains secrets or personal credentials.
 5. Otherwise present one recommendation: **accept as new file**, **merge into an existing file**, **return for more evidence**, or **reject** — with the specific target file and reasoning.
 6. Do not change any file until the user gives an explicit choice for that candidate.
-7. Valid destinations are limited to `brain/standards/`, `brain/playbooks/`, `brain/reviews/`, and `brain/projects.md` (index update only). Never write project architecture, requirements, or ADRs into the brain — those stay in the project repo.
+7. Valid destinations are limited to `brain/standards/`, `brain/playbooks/`, `brain/reviews/`, `brain/projects.md` (index update only), and `brain/connections.md` (index update only). Never write project architecture, requirements, or ADRs into the brain — those stay in the project repo.
 8. Never modify the global `claude/CLAUDE.md` automatically. If a lesson seems important enough to load in every session, say so as a separate recommendation for the user to apply themselves.
 9. On acceptance: write/merge the content into the destination, preserving the source and verification metadata from the candidate, then delete the inbox candidate — only after the destination write succeeds.
 10. On rejection: delete the candidate only after the user explicitly confirms.
