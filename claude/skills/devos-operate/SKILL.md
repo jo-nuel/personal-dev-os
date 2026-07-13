@@ -37,6 +37,14 @@ the same kind of short plain-text checklist `devos-task open` would give a tiny 
 Break the goal into microtasks. Each microtask must have an independently verifiable
 "done" condition — split only where that condition changes, not just for convenience.
 
+Before splitting, triage each candidate piece with **Eliminate → Automate → Delegate**,
+in that order: does it need doing at all (eliminate); can a deterministic script or
+existing tool do it without a model (automate); only then decide who executes it
+(delegate, per step 6). Eliminated pieces are named in the dashboard's big-picture line,
+not silently dropped. Each surviving microtask also gets an explicit autonomy level —
+**do-and-report** or **propose-and-wait** — recorded in its table row; high-risk items
+are always propose-and-wait, per the gate in step 2.
+
 ## 5. Render the initial dashboard
 
 Before writing anything, invoke the `artifact-design` skill to calibrate design weight —
@@ -56,12 +64,14 @@ Render every microtask with status `pending`. Sections, in order:
    last-updated timestamp.
 2. **Big picture** — one or two lines on what state was actually read (which
    `STATUS.md`, which active task files), labeled **verified** vs **inferred** the way
-   `devos-repo-brief` does.
+   `devos-repo-brief` does, plus, when EAD triage eliminated any candidate pieces, a
+   trailing one-line note of what was eliminated and why.
 3. **Approval gates** — present only when high-risk items are awaiting plan approval.
    Make this visually prominent and first — it is the one thing that blocks progress, not
    a footnote in the table.
 4. **Microtask table** — columns: microtask, delegated-to (direct / Explore / Plan /
-   general-purpose / devos-task / Workflow), status badge, verification result.
+   general-purpose / devos-task / Workflow), autonomy (do-and-report /
+   propose-and-wait), status badge, verification result.
 5. **Next recommended action** — one line, footer.
 
 Theme-aware (`prefers-color-scheme` plus a `data-theme` override), fully self-contained,
