@@ -18,10 +18,39 @@ brain/                  second brain (cross-project knowledge only)
   inbox/                proposed memory candidates awaiting my approval
   projects.md           one-line index of all projects (detail lives in each repo)
 templates/              ADR, task, playbook, inbox, review, repo CLAUDE.md, verify.ps1
-scripts/                cross-cutting DevOS scripts (mission-control scan)
+scripts/                cross-cutting DevOS scripts (mission-control scan, verify)
 docs/                   system documentation (secrets.md, decisions/)
+agent/                  Python: task classification + model routing (see below)
+tests/                  pytest suite for agent/ — mocked, needs no API key
+pyproject.toml          Python deps, managed with uv
 sync.ps1                installs claude/ into ~/.claude — safe merge, see below
 ```
+
+## Agent model routing (`agent/`)
+
+`run_task()` classifies a task with Haiku, maps the label to a model, and either
+makes a live call or queues a Batch API request:
+
+| Tier | Model | Used for |
+|---|---|---|
+| trivial | `claude-haiku-4-5-20251001` | renames, typos, one-line fixes, lookups |
+| standard | `claude-sonnet-5` | ordinary features, bug fixes, focused refactors |
+| hard | `claude-opus-5` | architecture, migrations, tricky debugging |
+
+```python
+from agent import run_task
+
+r = run_task("rename the config flag")          # classified, live call
+r = run_task("nightly digest", interactive=False)  # queued via Batch API (50% off)
+r = run_task("fix typo", tier="trivial")        # skips the classifier round-trip
+```
+
+Classification costs one extra Haiku call per task; pass `tier=` when the caller
+already knows the difficulty. Check `r.complete` before trusting `r.text` — it is
+False on a refusal or a `max_tokens` truncation. Rationale and the caching
+caveats are in `docs/decisions/2026-07-18-agent-model-routing.md`.
+
+Setup: `uv sync --extra dev`. Verify: `scripts/verify.ps1`.
 
 ## Installing / updating the config
 
