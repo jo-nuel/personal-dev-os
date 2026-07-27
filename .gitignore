@@ -7,3 +7,10 @@
 # Mission-control run state (artifact URL + generated dashboard) — machine-local
 .claude/mission-control.json
 .claude/mission-control.html
+
+# Python build artifacts and virtualenv (agent/). uv.lock IS committed —
+# this is an application, so the resolved dependency set is part of the repo.
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
