@@ -45,6 +45,26 @@ not silently dropped. Each surviving microtask also gets an explicit autonomy le
 **do-and-report** or **propose-and-wait** — recorded in its table row; high-risk items
 are always propose-and-wait, per the gate in step 2.
 
+### File scope and phases
+
+Give every microtask a **file scope**: the files it may create or modify. If you cannot
+name the scope, the microtask is not specified well enough to delegate — split it or
+send an `Explore` first.
+
+Group microtasks into **phases** using the file scopes:
+
+- Two microtasks may share a phase when their scopes are **disjoint** and neither needs
+  the other's output.
+- Overlapping scope, or a data dependency, forces a later phase.
+
+Phases run in order. Within a phase, issue every delegation in a **single message** so
+they run concurrently. Never parallelize two microtasks that touch the same file —
+concurrent edits to one file lose writes silently, and no verification step will catch
+it because each subagent sees its own change succeed.
+
+When scopes genuinely must overlap, pick one: sequence them into separate phases, or
+give each agent a distinct subtree and a narrower scope.
+
 ## 5. Render the initial dashboard
 
 Before writing anything, invoke the `artifact-design` skill to calibrate design weight —
@@ -69,10 +89,14 @@ Render every microtask with status `pending`. Sections, in order:
 3. **Approval gates** — present only when high-risk items are awaiting plan approval.
    Make this visually prominent and first — it is the one thing that blocks progress, not
    a footnote in the table.
-4. **Microtask table** — columns: microtask, delegated-to (direct / Explore / Plan /
-   general-purpose / devos-task / Workflow), autonomy (do-and-report /
-   propose-and-wait), status badge, verification result.
+4. **Microtask table** — columns: phase, microtask, file scope, delegated-to (with its
+   kind — see step 6: `subagent` or `handoff`), autonomy (do-and-report /
+   propose-and-wait), status badge, verification result. Group rows by phase so the
+   concurrent set is visible at a glance.
 5. **Next recommended action** — one line, footer.
+
+Status values are `pending`, `in-progress`, `done`, `blocked`, and `handed off`. A
+handoff row ends at `handed off` and never reaches `done` — see step 6.
 
 Theme-aware (`prefers-color-scheme` plus a `data-theme` override), fully self-contained,
 and responsive (the table scrolls horizontally inside its own container, the page body
@@ -80,21 +104,58 @@ never does). Pick one favicon emoji for the run and keep it stable across redepl
 
 ## 6. Delegate
 
-For each microtask, pick the cheapest tool that fits:
+Delegation comes in two kinds, and they are not interchangeable:
+
+**Subagents** — spawned in an isolated context, do the work, report back; this run
+continues and owns the result. Rows reach `done` normally.
 
 - Read-only research/investigation → `Explore` agent
 - Design/architecture questions → `Plan` agent
-- Implementation → do it directly, or `general-purpose` if it's cleanly isolable
-- Standalone multi-step work worth tracking on its own → hand off via `/devos-task open`
-- Multi-agent fan-out (`Workflow`) — only if the user explicitly invokes that in the same
+- Implementation → `general-purpose` agent
+
+**Handoffs** — control transfers permanently. The receiving skill owns the work from
+that point; this run does not see it finish and cannot verify it.
+
+- Standalone multi-step work worth tracking on its own → `/devos-task open`
+- Multi-agent fan-out → `Workflow`, only if the user explicitly invokes it in the same
   turn. This skill never self-escalates into `Workflow` on its own.
+
+A handoff row terminates at `handed off`, never `done` — marking it `done` would be
+claiming a verification this run never performed. Say what was handed over and to whom.
+
+### Keep the orchestrator's context clean
+
+Do not open implementation files. This run holds the goal, the plan, and the status
+table — nothing else. Anything that needs file contents is delegated, including small
+edits: a coordinator whose context has filled with source degrades at the one job it
+has. The state read in step 1 (`STATUS.md`, task files) is the exception, and it is
+deliberately narrow.
+
+### Delegate outcomes, not methods
+
+State what the microtask must achieve and the constraints it must respect; leave the
+approach to the specialist that can actually see the code.
+
+- ✅ "Fix the infinite loop when SideMenu re-renders. Files: `src/SideMenu.tsx`."
+- ❌ "Fix it by wrapping the selector in `useShallow`."
+
+This is not a style preference. Having not read the files, this run is not positioned to
+choose a method — and current models follow an instruction literally, so a prescribed
+approach overrides a better fix the specialist can see and you cannot.
 
 ## 7. Update the dashboard as work reports back
 
-As each microtask's delegated work completes, update its row
-(`pending → in-progress → done/blocked`) with its verification result, and redeploy the
-`Artifact` to the **same file path** so the URL stays the same. Never create a second
-artifact for the same run.
+As each microtask's delegated work completes, update its row with its verification
+result, and redeploy the `Artifact` to the **same file path** so the URL stays the same.
+Never create a second artifact for the same run.
+
+- Subagent rows: `pending → in-progress → done/blocked`.
+- Handoff rows: `pending → handed off`, at the moment control transfers. That is
+  terminal for this run.
+
+Redeploy once per phase rather than once per row — a phase's delegations finish close
+together, and one update per phase keeps the dashboard readable. Do not start the next
+phase until the current one has reported, or the file-scope guarantee is void.
 
 ## 8. Synthesize, don't relay
 
@@ -106,6 +167,11 @@ the dashboard. Do not paste raw subagent transcripts into chat.
 A microtask row only moves to `done` once its deterministic verification has actually
 run and passed, per the global verification rules. No row goes to `done` on confidence
 alone.
+
+Handoff rows are not an exception to this — they are outside it. They stop at
+`handed off` precisely because this run cannot verify them; the receiving skill carries
+the verification obligation. Never resolve a handoff row to `done` to make the table
+look finished.
 
 Never write credentials, `.env` values, access tokens, or raw sensitive output into the
 dashboard. This skill does not commit or push at any point.
