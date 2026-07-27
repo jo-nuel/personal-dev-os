@@ -52,6 +52,8 @@ $UserAgentsMd     = Join-Path $UserClaudeDir 'AGENTS.md'
 # installed — we create the file inside an existing ~/.codex, never the dir.
 $CodexDir         = Join-Path $env:USERPROFILE '.codex'
 $CodexAgentsMd    = Join-Path $CodexDir 'AGENTS.md'
+$CodexSkillsDir   = Join-Path $CodexDir 'skills'
+$CodexSkillsSrc   = Join-Path $RepoRoot 'claude\skills-codex'
 $ManifestPath     = Join-Path $UserClaudeDir '.devos-manifest.json'
 $BackupDir        = Join-Path $UserClaudeDir 'backups'
 $Utf8NoBom        = New-Object System.Text.UTF8Encoding($false)
@@ -123,6 +125,21 @@ if (-not $manifest.PSObject.Properties['denyRules']) { $manifest | Add-Member -N
 if (-not $manifest.PSObject.Properties['claudeMd'])  { $manifest | Add-Member -NotePropertyName claudeMd  -NotePropertyValue $false }
 if (-not $manifest.PSObject.Properties['agentsMd'])      { $manifest | Add-Member -NotePropertyName agentsMd      -NotePropertyValue $false }
 if (-not $manifest.PSObject.Properties['codexAgentsMd']) { $manifest | Add-Member -NotePropertyName codexAgentsMd -NotePropertyValue $false }
+if (-not $manifest.PSObject.Properties['codexSkills'])   { $manifest | Add-Member -NotePropertyName codexSkills   -NotePropertyValue @() }
+
+# Skills installed into ~/.codex/skills. Deliberately NOT the devos-* skills: Codex
+# ignores `disable-model-invocation` (verified 2026-07-27), so a manual-only skill is
+# discoverable and actionable there without the user typing anything. The external
+# skills are model-invocable by design, and claude/skills-codex/ holds proposal-only
+# Codex variants that never write.
+$codexSkillSources = @{}
+if (Test-Path $ExternalSkillsDir) {
+    Get-ChildItem -Directory $ExternalSkillsDir | ForEach-Object { $codexSkillSources[$_.Name] = $_.FullName }
+}
+if (Test-Path $CodexSkillsSrc) {
+    Get-ChildItem -Directory $CodexSkillsSrc | ForEach-Object { $codexSkillSources[$_.Name] = $_.FullName }
+}
+$codexRepoSkills = @($codexSkillSources.Keys)
 if (-not $manifest.PSObject.Properties['skills'])    { $manifest | Add-Member -NotePropertyName skills    -NotePropertyValue @() }
 
 # ---------------------------------------------------------------- merge -----
@@ -220,6 +237,21 @@ if (-not (Test-Path $CodexDir)) {
 } else {
     $assetActions += "INSTALL Codex AGENTS.md -> $CodexAgentsMd"
 }
+if (Test-Path $CodexDir) {
+    foreach ($skill in $codexRepoSkills) {
+        $dest = Join-Path $CodexSkillsDir $skill
+        if ((Test-Path $dest) -and (@($manifest.codexSkills) -notcontains $skill)) {
+            $assetActions += "SKIP Codex skill '$skill' - exists at $dest but was not installed by DevOS (never overwritten)"
+        } else {
+            $assetActions += "INSTALL/UPDATE Codex skill '$skill' -> $dest"
+        }
+    }
+    foreach ($skill in @($manifest.codexSkills)) {
+        if ($codexRepoSkills -notcontains $skill) {
+            $assetActions += "REMOVE Codex skill '$skill' (DevOS-installed, no longer in repo)"
+        }
+    }
+}
 
 # ----------------------------------------------------------------- diff -----
 $ts         = Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -301,6 +333,24 @@ if (Test-Path $CodexDir) {
         Write-Host "Installed Codex AGENTS.md"
     }
 }
+$installedCodexSkills = @()
+if (Test-Path $CodexDir) {
+    if (-not (Test-Path $CodexSkillsDir)) { New-Item -ItemType Directory -Path $CodexSkillsDir | Out-Null }
+    foreach ($skill in $codexRepoSkills) {
+        $dest = Join-Path $CodexSkillsDir $skill
+        if ((Test-Path $dest) -and (@($manifest.codexSkills) -notcontains $skill)) { continue }
+        if (Test-Path $dest) { Remove-Item $dest -Recurse -Force }
+        Copy-Item $codexSkillSources[$skill] $dest -Recurse
+        $installedCodexSkills += $skill
+        Write-Host "Installed Codex skill: $skill"
+    }
+    foreach ($skill in @($manifest.codexSkills)) {
+        if ($codexRepoSkills -notcontains $skill) {
+            $dest = Join-Path $CodexSkillsDir $skill
+            if (Test-Path $dest) { Remove-Item $dest -Recurse -Force; Write-Host "Removed Codex skill: $skill" }
+        }
+    }
+}
 
 # Manifest
 $newManifest = New-Object PSObject
@@ -308,6 +358,7 @@ $newManifest | Add-Member -NotePropertyName denyRules -NotePropertyValue $devosD
 $newManifest | Add-Member -NotePropertyName claudeMd  -NotePropertyValue $claudeMdOwned
 $newManifest | Add-Member -NotePropertyName agentsMd      -NotePropertyValue $agentsMdOwned
 $newManifest | Add-Member -NotePropertyName codexAgentsMd -NotePropertyValue $codexAgentsMdOwned
+$newManifest | Add-Member -NotePropertyName codexSkills   -NotePropertyValue $installedCodexSkills
 $newManifest | Add-Member -NotePropertyName skills    -NotePropertyValue $installedSkills
 $newManifest | Add-Member -NotePropertyName lastSync  -NotePropertyValue (Get-Date -Format 'o')
 Write-Utf8NoBom $ManifestPath ($newManifest | ConvertTo-Json -Depth 10)
