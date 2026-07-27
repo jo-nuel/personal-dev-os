@@ -46,6 +46,12 @@ $UserClaudeDir    = if ($TargetDir) { $TargetDir } else { Join-Path $env:USERPRO
 $UserSettings     = Join-Path $UserClaudeDir 'settings.json'
 $UserClaudeMd     = Join-Path $UserClaudeDir 'CLAUDE.md'
 $UserSkillsDir    = Join-Path $UserClaudeDir 'skills'
+$DevosAgentsMd    = Join-Path $RepoRoot 'claude\AGENTS.md'
+$UserAgentsMd     = Join-Path $UserClaudeDir 'AGENTS.md'
+# Codex reads ~/.codex/AGENTS.md natively. Only written when Codex is actually
+# installed — we create the file inside an existing ~/.codex, never the dir.
+$CodexDir         = Join-Path $env:USERPROFILE '.codex'
+$CodexAgentsMd    = Join-Path $CodexDir 'AGENTS.md'
 $ManifestPath     = Join-Path $UserClaudeDir '.devos-manifest.json'
 $BackupDir        = Join-Path $UserClaudeDir 'backups'
 $Utf8NoBom        = New-Object System.Text.UTF8Encoding($false)
@@ -115,6 +121,8 @@ $current  = Read-JsonFile $UserSettings
 $manifest = Read-JsonFile $ManifestPath
 if (-not $manifest.PSObject.Properties['denyRules']) { $manifest | Add-Member -NotePropertyName denyRules -NotePropertyValue @() }
 if (-not $manifest.PSObject.Properties['claudeMd'])  { $manifest | Add-Member -NotePropertyName claudeMd  -NotePropertyValue $false }
+if (-not $manifest.PSObject.Properties['agentsMd'])      { $manifest | Add-Member -NotePropertyName agentsMd      -NotePropertyValue $false }
+if (-not $manifest.PSObject.Properties['codexAgentsMd']) { $manifest | Add-Member -NotePropertyName codexAgentsMd -NotePropertyValue $false }
 if (-not $manifest.PSObject.Properties['skills'])    { $manifest | Add-Member -NotePropertyName skills    -NotePropertyValue @() }
 
 # ---------------------------------------------------------------- merge -----
@@ -198,6 +206,20 @@ if (Test-Path $UserClaudeMd) {
 } else {
     $assetActions += "INSTALL CLAUDE.md -> $UserClaudeMd"
 }
+if (Test-Path $UserAgentsMd) {
+    if ($manifest.agentsMd) { $assetActions += "UPDATE AGENTS.md -> $UserAgentsMd (DevOS-owned per manifest)" }
+    else { $assetActions += "SKIP AGENTS.md - $UserAgentsMd exists and was not installed by DevOS (never overwritten)" }
+} else {
+    $assetActions += "INSTALL AGENTS.md -> $UserAgentsMd"
+}
+if (-not (Test-Path $CodexDir)) {
+    $assetActions += "SKIP Codex AGENTS.md - $CodexDir does not exist (Codex not installed)"
+} elseif (Test-Path $CodexAgentsMd) {
+    if ($manifest.codexAgentsMd) { $assetActions += "UPDATE Codex AGENTS.md -> $CodexAgentsMd (DevOS-owned per manifest)" }
+    else { $assetActions += "SKIP Codex AGENTS.md - $CodexAgentsMd exists and was not installed by DevOS (never overwritten)" }
+} else {
+    $assetActions += "INSTALL Codex AGENTS.md -> $CodexAgentsMd"
+}
 
 # ----------------------------------------------------------------- diff -----
 $ts         = Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -264,11 +286,28 @@ if ((-not (Test-Path $UserClaudeMd)) -or $claudeMdOwned) {
     $claudeMdOwned = $true
     Write-Host "Installed CLAUDE.md"
 }
+$agentsMdOwned = [bool]$manifest.agentsMd
+if ((-not (Test-Path $UserAgentsMd)) -or $agentsMdOwned) {
+    Copy-Item $DevosAgentsMd $UserAgentsMd -Force
+    $agentsMdOwned = $true
+    Write-Host "Installed AGENTS.md"
+}
+# Same file, second consumer. Skipped entirely when Codex isn't installed.
+$codexAgentsMdOwned = [bool]$manifest.codexAgentsMd
+if (Test-Path $CodexDir) {
+    if ((-not (Test-Path $CodexAgentsMd)) -or $codexAgentsMdOwned) {
+        Copy-Item $DevosAgentsMd $CodexAgentsMd -Force
+        $codexAgentsMdOwned = $true
+        Write-Host "Installed Codex AGENTS.md"
+    }
+}
 
 # Manifest
 $newManifest = New-Object PSObject
 $newManifest | Add-Member -NotePropertyName denyRules -NotePropertyValue $devosDeny
 $newManifest | Add-Member -NotePropertyName claudeMd  -NotePropertyValue $claudeMdOwned
+$newManifest | Add-Member -NotePropertyName agentsMd      -NotePropertyValue $agentsMdOwned
+$newManifest | Add-Member -NotePropertyName codexAgentsMd -NotePropertyValue $codexAgentsMdOwned
 $newManifest | Add-Member -NotePropertyName skills    -NotePropertyValue $installedSkills
 $newManifest | Add-Member -NotePropertyName lastSync  -NotePropertyValue (Get-Date -Format 'o')
 Write-Utf8NoBom $ManifestPath ($newManifest | ConvertTo-Json -Depth 10)
