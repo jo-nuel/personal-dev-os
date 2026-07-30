@@ -41,6 +41,10 @@ If two implementation attempts fail verification, stop retrying — re-plan, esc
 
 Each tool maps these tiers to its own models — see the tool-specific section of its instruction file.
 
+**Tier is per task, not per session.** A running session generally cannot change its own model, so a mixed workload is handled by delegating the heavy pieces to an agent pinned to the higher tier while the session itself stays at Default. When decomposing work, assign each piece a tier and route it accordingly rather than escalating the whole run.
+
+Two limits on that. A delegated agent runs in an isolated context and cannot see the conversation, so work that depends on the running discussion has to be escalated by hand instead. And escalation is triggered by the task actually meeting a High criterion — a plan whose steps are nearly all High usually means it was decomposed too coarsely.
+
 ## Choosing a tool for the work
 
 Claude Code and Codex are both available and are billed from different pools.

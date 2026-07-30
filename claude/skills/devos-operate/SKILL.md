@@ -45,6 +45,25 @@ not silently dropped. Each surviving microtask also gets an explicit autonomy le
 **do-and-report** or **propose-and-wait** — recorded in its table row; high-risk items
 are always propose-and-wait, per the gate in step 2.
 
+### Tier per microtask
+
+Assign each microtask an effort tier, and pass it as the delegation's `model`:
+
+| Tier | Model | Microtask looks like |
+|---|---|---|
+| Low | `haiku` | Mechanical edit, rename, single-file lookup, formatting |
+| Default | `sonnet` | Ordinary implementation, focused refactor, normal research |
+| High | `opus` | Architecture or tradeoff calls, hard debugging, migrations, cross-cutting change |
+
+Default to `sonnet` and escalate only when a microtask actually meets a High
+trigger — a decomposition where most rows are High usually means the goal was
+split too coarsely, not that the work is uniformly hard. Tier is per microtask,
+not per run: one High row alongside four Default rows is the normal shape.
+
+For High rows, prefer the pinned agents (`deep-decision` for judgement calls,
+`heavy-implementation` for large isolable coding) over passing `model` to a
+generic agent — their instructions are written for that tier.
+
 ### File scope and phases
 
 Give every microtask a **file scope**: the files it may create or modify. If you cannot
@@ -89,10 +108,11 @@ Render every microtask with status `pending`. Sections, in order:
 3. **Approval gates** — present only when high-risk items are awaiting plan approval.
    Make this visually prominent and first — it is the one thing that blocks progress, not
    a footnote in the table.
-4. **Microtask table** — columns: phase, microtask, file scope, delegated-to (with its
-   kind — see step 6: `subagent` or `handoff`), autonomy (do-and-report /
-   propose-and-wait), status badge, verification result. Group rows by phase so the
-   concurrent set is visible at a glance.
+4. **Microtask table** — columns: phase, microtask, file scope, tier (low / default /
+   high, with the model it maps to), delegated-to (with its kind — see step 6:
+   `subagent` or `handoff`), autonomy (do-and-report / propose-and-wait), status badge,
+   verification result. Group rows by phase so the concurrent set is visible at a
+   glance.
 5. **Next recommended action** — one line, footer.
 
 Status values are `pending`, `in-progress`, `done`, `blocked`, and `handed off`. A
@@ -107,11 +127,18 @@ never does). Pick one favicon emoji for the run and keep it stable across redepl
 Delegation comes in two kinds, and they are not interchangeable:
 
 **Subagents** — spawned in an isolated context, do the work, report back; this run
-continues and owns the result. Rows reach `done` normally.
+continues and owns the result. Rows reach `done` normally. Pass the microtask's tier
+as `model` on every one of these.
 
 - Read-only research/investigation → `Explore` agent
-- Design/architecture questions → `Plan` agent
-- Implementation → `general-purpose` agent
+- Design/architecture questions → `Plan` agent, or `deep-decision` when the answer is
+  a judgement call rather than a lookup
+- Implementation → `general-purpose` agent, or `heavy-implementation` for large
+  isolable work
+
+A subagent cannot see this conversation. Anything it needs must be in its prompt —
+which is also why a High-tier microtask that genuinely depends on the running context
+is a poor delegation candidate: say so and escalate the session by hand instead.
 
 **Handoffs** — control transfers permanently. The receiving skill owns the work from
 that point; this run does not see it finish and cannot verify it.
