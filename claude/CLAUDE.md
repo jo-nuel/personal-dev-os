@@ -16,11 +16,33 @@ The tiers in **Effort routing** map to:
 |---|---|---|
 | Low | `haiku` | `/model haiku` |
 | Default | `sonnet` | `/model sonnet` — the standing default |
-| High | `fable` | `/model fable` — draws usage credits, so escalate deliberately |
+| High | `opus` | `/model opus`, or delegate to a pinned agent (below) |
+| Exceptional | `fable` | `/model fable` — draws usage credits; deliberate escalation only |
 
-Fable is the expensive tier. When Claude usage credits are the scarce resource
-and the work is bulk rather than subtle, consider handing it to Codex instead
-(see **Choosing a tool for the work**).
+Fable is not the normal high tier. Reach for it only when Opus has genuinely
+failed at the work, not as the default escalation. When Claude usage credits
+are the scarce resource and the work is bulk rather than subtle, consider
+handing it to Codex instead (see **Choosing a tool for the work**).
+
+## Routing individual tasks to a tier
+
+A running session cannot change its own model — `/model` is manual, and the
+`model` setting only applies at session start. Automatic tiering therefore
+happens by **delegation**: the session stays on its own model and hands
+tier-High work to an agent pinned to Opus.
+
+| Agent | Model | For |
+|---|---|---|
+| `deep-decision` | `opus` | Architecture, tradeoffs, migration planning, hard debugging |
+| `heavy-implementation` | `opus` | Large but cleanly-isolable coding work |
+
+Delegate when a piece of work meets a High trigger *and* can be stated without
+this conversation's history — subagents run in an isolated context and cannot
+see the transcript. Work that genuinely needs the running context is escalated
+by hand with `/model opus`, or by pinning `"model": "opus"` in that project's
+`.claude/settings.json` (as `skipbin` does).
+
+Default to Sonnet. Escalate on the trigger, not on the hunch.
 
 ## Reviews
 

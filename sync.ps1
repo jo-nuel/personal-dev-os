@@ -54,6 +54,8 @@ $CodexDir         = Join-Path $env:USERPROFILE '.codex'
 $CodexAgentsMd    = Join-Path $CodexDir 'AGENTS.md'
 $CodexSkillsDir   = Join-Path $CodexDir 'skills'
 $CodexSkillsSrc   = Join-Path $RepoRoot 'claude\skills-codex'
+$DevosAgentsDir   = Join-Path $RepoRoot 'claude\agents'
+$UserAgentsDir    = Join-Path $UserClaudeDir 'agents'
 $ManifestPath     = Join-Path $UserClaudeDir '.devos-manifest.json'
 $BackupDir        = Join-Path $UserClaudeDir 'backups'
 $Utf8NoBom        = New-Object System.Text.UTF8Encoding($false)
@@ -126,6 +128,15 @@ if (-not $manifest.PSObject.Properties['claudeMd'])  { $manifest | Add-Member -N
 if (-not $manifest.PSObject.Properties['agentsMd'])      { $manifest | Add-Member -NotePropertyName agentsMd      -NotePropertyValue $false }
 if (-not $manifest.PSObject.Properties['codexAgentsMd']) { $manifest | Add-Member -NotePropertyName codexAgentsMd -NotePropertyValue $false }
 if (-not $manifest.PSObject.Properties['codexSkills'])   { $manifest | Add-Member -NotePropertyName codexSkills   -NotePropertyValue @() }
+if (-not $manifest.PSObject.Properties['agents'])        { $manifest | Add-Member -NotePropertyName agents        -NotePropertyValue @() }
+
+# Custom agent definitions (~/.claude/agents). Each pins its own model in
+# frontmatter, which is how tier routing happens - a session cannot change its
+# own model, so High-tier work is delegated to an agent pinned to Opus.
+$repoAgents = @()
+if (Test-Path $DevosAgentsDir) {
+    $repoAgents = @(Get-ChildItem -File -Filter '*.md' $DevosAgentsDir | ForEach-Object { $_.Name })
+}
 
 # Skills installed into ~/.codex/skills. Deliberately NOT the devos-* skills: Codex
 # ignores `disable-model-invocation` (verified 2026-07-27), so a manual-only skill is
@@ -237,6 +248,19 @@ if (-not (Test-Path $CodexDir)) {
 } else {
     $assetActions += "INSTALL Codex AGENTS.md -> $CodexAgentsMd"
 }
+foreach ($agent in $repoAgents) {
+    $dest = Join-Path $UserAgentsDir $agent
+    if ((Test-Path $dest) -and (@($manifest.agents) -notcontains $agent)) {
+        $assetActions += "SKIP agent '$agent' - exists at $dest but was not installed by DevOS (never overwritten)"
+    } else {
+        $assetActions += "INSTALL/UPDATE agent '$agent' -> $dest"
+    }
+}
+foreach ($agent in @($manifest.agents)) {
+    if ($repoAgents -notcontains $agent) {
+        $assetActions += "REMOVE agent '$agent' (DevOS-installed, no longer in repo)"
+    }
+}
 if (Test-Path $CodexDir) {
     foreach ($skill in $codexRepoSkills) {
         $dest = Join-Path $CodexSkillsDir $skill
@@ -333,6 +357,22 @@ if (Test-Path $CodexDir) {
         Write-Host "Installed Codex AGENTS.md"
     }
 }
+$installedAgents = @()
+if ($repoAgents.Count -gt 0 -and -not (Test-Path $UserAgentsDir)) { New-Item -ItemType Directory -Path $UserAgentsDir | Out-Null }
+foreach ($agent in $repoAgents) {
+    $dest = Join-Path $UserAgentsDir $agent
+    if ((Test-Path $dest) -and (@($manifest.agents) -notcontains $agent)) { continue }
+    Copy-Item (Join-Path $DevosAgentsDir $agent) $dest -Force
+    $installedAgents += $agent
+    Write-Host "Installed agent: $agent"
+}
+foreach ($agent in @($manifest.agents)) {
+    if ($repoAgents -notcontains $agent) {
+        $dest = Join-Path $UserAgentsDir $agent
+        if (Test-Path $dest) { Remove-Item $dest -Force; Write-Host "Removed agent: $agent" }
+    }
+}
+
 $installedCodexSkills = @()
 if (Test-Path $CodexDir) {
     if (-not (Test-Path $CodexSkillsDir)) { New-Item -ItemType Directory -Path $CodexSkillsDir | Out-Null }
@@ -359,6 +399,7 @@ $newManifest | Add-Member -NotePropertyName claudeMd  -NotePropertyValue $claude
 $newManifest | Add-Member -NotePropertyName agentsMd      -NotePropertyValue $agentsMdOwned
 $newManifest | Add-Member -NotePropertyName codexAgentsMd -NotePropertyValue $codexAgentsMdOwned
 $newManifest | Add-Member -NotePropertyName codexSkills   -NotePropertyValue $installedCodexSkills
+$newManifest | Add-Member -NotePropertyName agents        -NotePropertyValue $installedAgents
 $newManifest | Add-Member -NotePropertyName skills    -NotePropertyValue $installedSkills
 $newManifest | Add-Member -NotePropertyName lastSync  -NotePropertyValue (Get-Date -Format 'o')
 Write-Utf8NoBom $ManifestPath ($newManifest | ConvertTo-Json -Depth 10)
