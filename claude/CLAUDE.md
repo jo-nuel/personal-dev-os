@@ -64,8 +64,15 @@ above are enforced by instruction only.
 
 ## Skills
 
-Seven manual-only `devos-*` skills (`disable-model-invocation: true`) — they
+Eight manual-only `devos-*` skills (`disable-model-invocation: true`) — they
 never auto-fire and only run when the slash command is typed. Claude cannot
 invoke them via the Skill tool; when a task calls for one, replicate its
 documented steps by hand and say that the substitution happened (see
 `brain/standards/manual-only-skills.md`).
+
+Two of them maintain the brain, and the split between them matters:
+`/devos-promote` judges *new* lessons arriving in `brain/inbox/`;
+`/devos-consolidate` looks *inward* at memory already made permanent and files
+merge/split/retire proposals back into `brain/inbox/`. Neither the brain's own
+maintenance nor anything else writes to permanent memory without Jonathan's
+per-item approval.

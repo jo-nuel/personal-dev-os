@@ -17,8 +17,8 @@ brain/                  second brain (cross-project knowledge only)
   reviews/              weekly reviews
   inbox/                proposed memory candidates awaiting my approval
   projects.md           one-line index of all projects (detail lives in each repo)
-templates/              ADR, task, playbook, inbox, review, repo CLAUDE.md, verify.ps1
-scripts/                cross-cutting DevOS scripts (mission-control scan, verify)
+templates/              ADR, task, playbook, inbox, consolidation, review, repo CLAUDE.md, verify.ps1
+scripts/                cross-cutting DevOS scripts (mission-control scan, brain scan, verify)
 docs/                   system documentation (secrets.md, decisions/)
 agent/                  Python: task classification + model routing (see below)
 tests/                  pytest suite for agent/ — mocked, needs no API key
@@ -67,7 +67,7 @@ overwrite anything DevOS didn't install.
 
 ## Personal skills
 
-Seven manual-only skills (`disable-model-invocation: true` — they never auto-fire,
+Eight manual-only skills (`disable-model-invocation: true` — they never auto-fire,
 only run when you type the command). `sync.ps1` installs them from
 `claude/skills/devos-*` into `~/.claude/skills/`; a fresh Claude Code session is
 required after the first install for them to appear.
@@ -77,6 +77,7 @@ required after the first install for them to appear.
 | `/devos-task` | `/devos-task open "Add profile editing"` | `.claude/tasks/*.md` in the current repo, `brain/inbox/*.md` on close | No |
 | `/devos-decision` | `/devos-decision "Use PostgreSQL for prod"` | `docs/decisions/*.md` in the current repo | No |
 | `/devos-promote` | `/devos-promote all` | `brain/standards/`, `brain/playbooks/`, `brain/reviews/`, `brain/projects.md` (only after explicit per-candidate approval) | No |
+| `/devos-consolidate` | `/devos-consolidate playbooks` | `brain/inbox/*.md` only — proposals to merge/split/retire existing memory, applied via `/devos-promote` | No — but never touches permanent memory |
 | `/devos-repo-brief` | `/devos-repo-brief "focus on deployment"` | nothing | Yes — runs in a forked `Explore` sub-agent with `Edit`/`Write`/`NotebookEdit` removed |
 | `/devos-mvp-spec` | `/devos-mvp-spec "invoice reminder SaaS"` | `docs/product/*.md` and `docs/STATUS.md` in the current repo (only after explicit approval) | No |
 | `/devos-operate` | `/devos-operate "ship the export feature"` | a scratchpad dashboard artifact (standard/high-risk goals only); delegates to `devos-task`/other skills, which own their own writes | No |
@@ -113,7 +114,9 @@ config in `claude/settings-devos.json`):
 ## Principles (short form)
 
 - Project knowledge lives in the project repo; the brain holds only cross-project material.
-- Nothing enters permanent memory without passing through `brain/inbox/` and my approval.
+- Nothing enters permanent memory without passing through `brain/inbox/` and my approval —
+  including the brain's own maintenance, which proposes rather than self-writes
+  (`docs/decisions/2026-08-08-brain-consolidation.md`).
 - Done = deterministic verify script passed, not model confidence.
 - Sonnet by default; Fable only for deliberately escalated high-value work.
 - Secret deny rules are a guardrail, not a security boundary — see `docs/secrets.md`.
