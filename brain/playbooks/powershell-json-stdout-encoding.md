@@ -70,7 +70,18 @@ had only read the source would not have caught it.
 ## Scope
 
 Applies to every DevOS script matching this shape (reads markdown, emits JSON on stdout,
-parsed by a skill). `scripts/brain-scan.ps1` is fixed. `scripts/mission-control-scan.ps1`
-has the same shape and had not been checked as of 2026-08-08.
+parsed by a skill).
+
+Audited across `scripts/` on 2026-08-09 — three scripts had it, written at different
+times. `brain-scan.ps1` and `mission-control-scan.ps1` both needed the two-part fix.
+`mission-control-scan.ps1` had a third path the others do not: it reads git commit
+subjects, and 5.1 decodes native command output using the console codepage, so it also
+sets `[Console]::OutputEncoding` to UTF-8 before invoking git. `hook-session-start.ps1`
+was reading JSON without `-Encoding`. All three are fixed.
+
+`scripts/verify.ps1` now enforces this with a static AST check that fails on any
+`Get-Content` in `scripts/` lacking `-Encoding`. Three instances written months apart is
+the argument for the check over remembering — and a line-based regex is not enough, since
+it also matches the literal inside the check's own name.
 
 <!-- Only verified fixes enter playbooks. If the cause was never confirmed, it stays in inbox. -->

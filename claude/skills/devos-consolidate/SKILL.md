@@ -65,6 +65,12 @@ Then, from the same scan data (not a flag — a judgement call):
 - **harden** — a playbook with `revisions` ≥ 3 has been amended repeatedly, which is
   evidence it is load-bearing. Consider proposing it be lifted into `brain/standards/`.
   Only with the revision history as evidence.
+- **correct** — a memory file states something that has since stopped being true (a
+  version-specific value, a "not yet audited" note, a named path that moved). Propose the
+  replacement only when the *new* fact is verified to the standard any lesson is held to;
+  staleness alone is a reason to look, never a reason to rewrite. Where the old text is
+  explicitly dated it stays true as a historical statement — prefer adding the update to
+  overwriting the record.
 
 **Contradictions** are the one thing the scan cannot detect; look for them in the pairs
 you have already opened for another reason. Propose a resolution only when both files
