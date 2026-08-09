@@ -19,7 +19,7 @@ if ($LASTEXITCODE -eq 0 -and $repoRoot) {
 $statePath = 'C:\Users\Jonathan\Projects\personal-dev-os\.claude\mission-control.json'
 if (Test-Path -LiteralPath $statePath) {
     try {
-        $state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
+        $state = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 | ConvertFrom-Json
         $scanned = [datetimeoffset]::Parse($state.lastScanGeneratedAt, [Globalization.CultureInfo]::InvariantCulture)
         $days = ((Get-Date) - $scanned.LocalDateTime).TotalDays
         if ($days -gt $staleDays) {

@@ -36,6 +36,36 @@ Invoke-Check "hook syntax" {
     }
 }
 
+# Get-Content defaults to the ANSI codepage in 5.1, silently mangling any
+# non-ASCII it reads. It cost two scripts already, and the damage is invisible
+# in a UTF-8 session, so require the flag rather than trusting review to catch it.
+Invoke-Check "file-read encoding" {
+    $offenders = @()
+    foreach ($f in (Get-ChildItem -LiteralPath (Join-Path $repoRoot 'scripts') -Filter '*.ps1' -File)) {
+        # AST, not a text match: a regex over lines also hits the literal inside
+        # this check's own name and any mention in a comment.
+        $ast = [System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$null, [ref]$null)
+        $calls = $ast.FindAll({
+            param($n)
+            $n -is [System.Management.Automation.Language.CommandAst] -and
+            $n.GetCommandName() -eq 'Get-Content'
+        }, $true)
+        foreach ($c in $calls) {
+            $hasEncoding = @($c.CommandElements | Where-Object {
+                $_ -is [System.Management.Automation.Language.CommandParameterAst] -and
+                $_.ParameterName -like 'Enc*'
+            }).Count -gt 0
+            if (-not $hasEncoding) {
+                $offenders += "$($f.Name):$($c.Extent.StartLineNumber)  $($c.Extent.Text)"
+            }
+        }
+    }
+    if ($offenders.Count -gt 0) {
+        $offenders | ForEach-Object { Write-Host "  $_" }
+        throw "$($offenders.Count) Get-Content call(s) without -Encoding"
+    }
+}
+
 # brain-scan.ps1 feeds /devos-consolidate and the weekly review, both of which
 # refuse to act on unparseable output — so a broken scan fails silently as "no
 # findings". Run it for real and assert the contract instead.

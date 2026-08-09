@@ -14,6 +14,11 @@ param(
 # NativeCommandErrors in 5.1 — keep 'Continue' and gate on $LASTEXITCODE.
 $ErrorActionPreference = 'Continue'
 
+# git emits UTF-8; 5.1 decodes native command output with the console codepage,
+# so a commit subject containing an em dash arrives as mojibake without this.
+# See brain/playbooks/powershell-json-stdout-encoding.md.
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
 # $PSScriptRoot is not populated when param defaults evaluate under -File in 5.1.
 if (-not $DevosRoot) { $DevosRoot = Split-Path -Parent $PSScriptRoot }
 
@@ -116,7 +121,9 @@ function Get-ProjectInfo {
     $statusPath = Join-Path $RepoPath 'docs\STATUS.md'
     if (Test-Path -LiteralPath $statusPath -PathType Leaf) {
         $info.statusMd.exists = $true
-        $head30 = Get-Content -LiteralPath $statusPath -TotalCount 30
+        # -Encoding UTF8: the 5.1 default is the ANSI codepage, which turns a UTF-8
+        # em dash in the Updated: line into mojibake on the dashboard.
+        $head30 = Get-Content -LiteralPath $statusPath -TotalCount 30 -Encoding UTF8
         foreach ($line in @($head30)) {
             if ($line -match '(?i)^\s*\*{0,2}Updated\*{0,2}\s*[:：]\s*(.+)$') {
                 $info.statusMd.updatedLine = $Matches[1].Trim()
@@ -203,7 +210,7 @@ $inIndexNotOnDisk = @()
 function Get-NormalizedPath { param([string]$p) return $p.TrimEnd('\', '/').ToLowerInvariant() }
 
 if (Test-Path -LiteralPath $indexPath -PathType Leaf) {
-    foreach ($line in Get-Content -LiteralPath $indexPath) {
+    foreach ($line in Get-Content -LiteralPath $indexPath -Encoding UTF8) {
         if ($line -notmatch '^\s*\|') { continue }
         $cells = @($line -split '\|' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
         if ($cells.Count -lt 2) { continue }
@@ -249,5 +256,17 @@ $result = [ordered]@{
 
 # -InputObject (not pipeline) preserves single-element arrays; default -Depth 2
 # would silently stringify the nested objects.
-Write-Output (ConvertTo-Json -InputObject $result -Depth 6)
+$json = ConvertTo-Json -InputObject $result -Depth 6
+
+# Emit pure ASCII. stdout crossing a process boundary is re-encoded with whatever
+# console codepage the caller has, and under an OEM codepage a curly quote
+# best-fit maps to a bare " that breaks the JSON mid-value. \uXXXX is valid JSON
+# and codepage-independent. See brain/playbooks/powershell-json-stdout-encoding.md.
+$sb = New-Object System.Text.StringBuilder
+foreach ($ch in $json.ToCharArray()) {
+    if ([int]$ch -gt 126) { [void]$sb.AppendFormat('\u{0:x4}', [int]$ch) }
+    else { [void]$sb.Append($ch) }
+}
+
+Write-Output $sb.ToString()
 exit 0
