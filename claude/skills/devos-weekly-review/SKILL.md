@@ -25,6 +25,15 @@ Also gather:
 
 - `brain/inbox/` — list candidate filenames (may be empty).
 - The current `/model` setting, if visible in session context.
+- The brain's own health, from a second read-only scan:
+
+  ```
+  powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\Jonathan\Projects\personal-dev-os\scripts\brain-scan.ps1"
+  ```
+
+  Parse stdout as JSON; same gate as above (nonzero exit or `schemaVersion` ≠ `1` — report
+  the failure, do not guess). Take `flagCount` and the `flags` list. Do **not** open the
+  flagged files or judge them here; that is `/devos-consolidate`'s job.
 
 Compute the review filename deterministically. `Calendar.GetWeekOfYear` is **not**
 ISO-8601 week numbering and gets the year wrong at year boundaries — use the
@@ -48,8 +57,11 @@ run from any project's working directory. Rules:
   with no activity rather than padding.
 - **Inbox triage** — record the candidate filenames found. Do not promote anything here;
   if the inbox is non-empty, note "run `/devos-promote`" as the action.
-- **Drift checks** — the template's checklist, plus one added line:
-  `- [ ] brain/connections.md still matches reality`. Check what is cheaply checkable
+- **Drift checks** — the template's checklist, plus two added lines:
+  `- [ ] brain/connections.md still matches reality` and one reporting the brain scan's
+  `flagCount` verbatim (e.g. `- [ ] brain health: 3 flags — run /devos-consolidate`,
+  or `- [x] brain health: 0 flags`). Name the flag kinds, not conclusions about them.
+  Check what is cheaply checkable
   (e.g. `/model` from session context, stale STATUS.md flags from the scan) and leave
   the rest unchecked for Jonathan rather than guessing. If a `connections.md` row is
   found stale, do not edit that file directly — file it as a `brain/inbox/` candidate
