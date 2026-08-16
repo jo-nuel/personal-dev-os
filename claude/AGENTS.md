@@ -1,12 +1,13 @@
 # Operating Instructions (DevOS)
 
-Read by any AI coding tool. Codex CLI reads this file natively from
-`~/.codex/AGENTS.md`; Claude Code reads it via the `@AGENTS.md` import in
-`~/.claude/CLAUDE.md`.
+Written to hold for any AI coding tool, but as of 2026-08-16 **only Claude Code
+loads it** — via the `@AGENTS.md` import in `~/.claude/CLAUDE.md`. DevOS no
+longer installs anything into `~/.codex`
+(`docs/decisions/2026-08-16-drop-codex-integration.md`).
 
 Source of truth: `C:\Users\Jonathan\Projects\personal-dev-os\claude\AGENTS.md`.
-Edit there and run `sync.ps1` — never edit the installed copies under
-`~/.claude` or `~/.codex` directly.
+Edit there and run `sync.ps1` — never edit the installed copy under `~/.claude`
+directly.
 
 Anything in here must hold for *any* agent tool. Tool-specific mechanics
 (model names, permission syntax, hooks) live in that tool's own file.
@@ -52,6 +53,8 @@ Prefer the one whose cost pool is not under pressure, then its strengths:
 
 - **Codex (GPT-5.6 Sol)** — usage is included in the ChatGPT Pro allowance (credit-metered underneath, but a large included cap). Prefer it for bulk or long-running work when Claude usage credits are the scarcer resource.
 - **Claude Code** — preferred where DevOS's own guardrails matter, because the hooks and secret deny rules only exist on this side (see Safety).
+
+**Codex is unconfigured as of 2026-08-16.** DevOS installs nothing into `~/.codex`, so none of these rules — task categories, the verification gate, memory rules, Safety — are loaded there. Work handed to Codex is handed to a tool operating without them, and whoever hands it over owns that. Restate any rule that matters for the piece of work, in the handoff itself.
 
 Hand work to the other tool deliberately, not by accident: state what is being handed over and why. A handoff transfers control — the receiving tool owns the work and reports back; it is not a model swap.
 

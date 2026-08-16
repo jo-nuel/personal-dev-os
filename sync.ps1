@@ -48,12 +48,9 @@ $UserClaudeMd     = Join-Path $UserClaudeDir 'CLAUDE.md'
 $UserSkillsDir    = Join-Path $UserClaudeDir 'skills'
 $DevosAgentsMd    = Join-Path $RepoRoot 'claude\AGENTS.md'
 $UserAgentsMd     = Join-Path $UserClaudeDir 'AGENTS.md'
-# Codex reads ~/.codex/AGENTS.md natively. Only written when Codex is actually
-# installed — we create the file inside an existing ~/.codex, never the dir.
-$CodexDir         = Join-Path $env:USERPROFILE '.codex'
-$CodexAgentsMd    = Join-Path $CodexDir 'AGENTS.md'
-$CodexSkillsDir   = Join-Path $CodexDir 'skills'
-$CodexSkillsSrc   = Join-Path $RepoRoot 'claude\skills-codex'
+# DevOS no longer installs anything into ~/.codex. Removed 2026-08-16 at
+# Jonathan's request; see docs/decisions/2026-08-16-drop-codex-integration.md.
+# claude\skills-codex\ is retained in the repo but is not installed anywhere.
 $DevosAgentsDir   = Join-Path $RepoRoot 'claude\agents'
 $UserAgentsDir    = Join-Path $UserClaudeDir 'agents'
 $ManifestPath     = Join-Path $UserClaudeDir '.devos-manifest.json'
@@ -126,8 +123,6 @@ $manifest = Read-JsonFile $ManifestPath
 if (-not $manifest.PSObject.Properties['denyRules']) { $manifest | Add-Member -NotePropertyName denyRules -NotePropertyValue @() }
 if (-not $manifest.PSObject.Properties['claudeMd'])  { $manifest | Add-Member -NotePropertyName claudeMd  -NotePropertyValue $false }
 if (-not $manifest.PSObject.Properties['agentsMd'])      { $manifest | Add-Member -NotePropertyName agentsMd      -NotePropertyValue $false }
-if (-not $manifest.PSObject.Properties['codexAgentsMd']) { $manifest | Add-Member -NotePropertyName codexAgentsMd -NotePropertyValue $false }
-if (-not $manifest.PSObject.Properties['codexSkills'])   { $manifest | Add-Member -NotePropertyName codexSkills   -NotePropertyValue @() }
 if (-not $manifest.PSObject.Properties['agents'])        { $manifest | Add-Member -NotePropertyName agents        -NotePropertyValue @() }
 
 # Custom agent definitions (~/.claude/agents). Each pins its own model in
@@ -138,19 +133,6 @@ if (Test-Path $DevosAgentsDir) {
     $repoAgents = @(Get-ChildItem -File -Filter '*.md' $DevosAgentsDir | ForEach-Object { $_.Name })
 }
 
-# Skills installed into ~/.codex/skills. Deliberately NOT the devos-* skills: Codex
-# ignores `disable-model-invocation` (verified 2026-07-27), so a manual-only skill is
-# discoverable and actionable there without the user typing anything. The external
-# skills are model-invocable by design, and claude/skills-codex/ holds proposal-only
-# Codex variants that never write.
-$codexSkillSources = @{}
-if (Test-Path $ExternalSkillsDir) {
-    Get-ChildItem -Directory $ExternalSkillsDir | ForEach-Object { $codexSkillSources[$_.Name] = $_.FullName }
-}
-if (Test-Path $CodexSkillsSrc) {
-    Get-ChildItem -Directory $CodexSkillsSrc | ForEach-Object { $codexSkillSources[$_.Name] = $_.FullName }
-}
-$codexRepoSkills = @($codexSkillSources.Keys)
 if (-not $manifest.PSObject.Properties['skills'])    { $manifest | Add-Member -NotePropertyName skills    -NotePropertyValue @() }
 
 # ---------------------------------------------------------------- merge -----
@@ -240,14 +222,6 @@ if (Test-Path $UserAgentsMd) {
 } else {
     $assetActions += "INSTALL AGENTS.md -> $UserAgentsMd"
 }
-if (-not (Test-Path $CodexDir)) {
-    $assetActions += "SKIP Codex AGENTS.md - $CodexDir does not exist (Codex not installed)"
-} elseif (Test-Path $CodexAgentsMd) {
-    if ($manifest.codexAgentsMd) { $assetActions += "UPDATE Codex AGENTS.md -> $CodexAgentsMd (DevOS-owned per manifest)" }
-    else { $assetActions += "SKIP Codex AGENTS.md - $CodexAgentsMd exists and was not installed by DevOS (never overwritten)" }
-} else {
-    $assetActions += "INSTALL Codex AGENTS.md -> $CodexAgentsMd"
-}
 foreach ($agent in $repoAgents) {
     $dest = Join-Path $UserAgentsDir $agent
     if ((Test-Path $dest) -and (@($manifest.agents) -notcontains $agent)) {
@@ -259,21 +233,6 @@ foreach ($agent in $repoAgents) {
 foreach ($agent in @($manifest.agents)) {
     if ($repoAgents -notcontains $agent) {
         $assetActions += "REMOVE agent '$agent' (DevOS-installed, no longer in repo)"
-    }
-}
-if (Test-Path $CodexDir) {
-    foreach ($skill in $codexRepoSkills) {
-        $dest = Join-Path $CodexSkillsDir $skill
-        if ((Test-Path $dest) -and (@($manifest.codexSkills) -notcontains $skill)) {
-            $assetActions += "SKIP Codex skill '$skill' - exists at $dest but was not installed by DevOS (never overwritten)"
-        } else {
-            $assetActions += "INSTALL/UPDATE Codex skill '$skill' -> $dest"
-        }
-    }
-    foreach ($skill in @($manifest.codexSkills)) {
-        if ($codexRepoSkills -notcontains $skill) {
-            $assetActions += "REMOVE Codex skill '$skill' (DevOS-installed, no longer in repo)"
-        }
     }
 }
 
@@ -348,15 +307,6 @@ if ((-not (Test-Path $UserAgentsMd)) -or $agentsMdOwned) {
     $agentsMdOwned = $true
     Write-Host "Installed AGENTS.md"
 }
-# Same file, second consumer. Skipped entirely when Codex isn't installed.
-$codexAgentsMdOwned = [bool]$manifest.codexAgentsMd
-if (Test-Path $CodexDir) {
-    if ((-not (Test-Path $CodexAgentsMd)) -or $codexAgentsMdOwned) {
-        Copy-Item $DevosAgentsMd $CodexAgentsMd -Force
-        $codexAgentsMdOwned = $true
-        Write-Host "Installed Codex AGENTS.md"
-    }
-}
 $installedAgents = @()
 if ($repoAgents.Count -gt 0 -and -not (Test-Path $UserAgentsDir)) { New-Item -ItemType Directory -Path $UserAgentsDir | Out-Null }
 foreach ($agent in $repoAgents) {
@@ -373,32 +323,11 @@ foreach ($agent in @($manifest.agents)) {
     }
 }
 
-$installedCodexSkills = @()
-if (Test-Path $CodexDir) {
-    if (-not (Test-Path $CodexSkillsDir)) { New-Item -ItemType Directory -Path $CodexSkillsDir | Out-Null }
-    foreach ($skill in $codexRepoSkills) {
-        $dest = Join-Path $CodexSkillsDir $skill
-        if ((Test-Path $dest) -and (@($manifest.codexSkills) -notcontains $skill)) { continue }
-        if (Test-Path $dest) { Remove-Item $dest -Recurse -Force }
-        Copy-Item $codexSkillSources[$skill] $dest -Recurse
-        $installedCodexSkills += $skill
-        Write-Host "Installed Codex skill: $skill"
-    }
-    foreach ($skill in @($manifest.codexSkills)) {
-        if ($codexRepoSkills -notcontains $skill) {
-            $dest = Join-Path $CodexSkillsDir $skill
-            if (Test-Path $dest) { Remove-Item $dest -Recurse -Force; Write-Host "Removed Codex skill: $skill" }
-        }
-    }
-}
-
 # Manifest
 $newManifest = New-Object PSObject
 $newManifest | Add-Member -NotePropertyName denyRules -NotePropertyValue $devosDeny
 $newManifest | Add-Member -NotePropertyName claudeMd  -NotePropertyValue $claudeMdOwned
 $newManifest | Add-Member -NotePropertyName agentsMd      -NotePropertyValue $agentsMdOwned
-$newManifest | Add-Member -NotePropertyName codexAgentsMd -NotePropertyValue $codexAgentsMdOwned
-$newManifest | Add-Member -NotePropertyName codexSkills   -NotePropertyValue $installedCodexSkills
 $newManifest | Add-Member -NotePropertyName agents        -NotePropertyValue $installedAgents
 $newManifest | Add-Member -NotePropertyName skills    -NotePropertyValue $installedSkills
 $newManifest | Add-Member -NotePropertyName lastSync  -NotePropertyValue (Get-Date -Format 'o')

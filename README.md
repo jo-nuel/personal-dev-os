@@ -3,6 +3,10 @@
 Personal AI-assisted development operating system: the source of truth for my
 global Claude Code configuration, second brain, templates, and workflows.
 
+Claude Code only. DevOS stopped installing into `~/.codex` on 2026-08-16
+(`docs/decisions/2026-08-16-drop-codex-integration.md`) — Codex runs with no
+DevOS rules loaded.
+
 ## Layout
 
 ```
@@ -11,6 +15,7 @@ claude/                 DevOS-managed Claude Code config (source of truth)
   settings-devos.json   DevOS-owned settings fields (model, effort, hooks, secret deny rules)
   skills/               devos-* skills -> synced to ~/.claude/skills/
   skills/external/      vendored third-party skills -> synced to ~/.claude/skills/
+  skills-codex/         proposal-only Codex variants — retained, no longer installed
 brain/                  second brain (cross-project knowledge only)
   standards/            permanent personal standards
   playbooks/            symptom-indexed troubleshooting knowledge

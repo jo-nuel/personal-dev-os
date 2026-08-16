@@ -59,8 +59,11 @@ deliberate re-read of the diff, not a command.
 - **SessionStart hook** — surfaces active task files and staleness nudges.
 - **PreToolUse hook** — forces a prompt on `git push --force`.
 
-None of these transfer to Codex. When work is handed there, the Safety rules
-above are enforced by instruction only.
+None of these transfer to Codex — and since 2026-08-16 DevOS installs no
+instructions there either, so `AGENTS.md` is not loaded on that side at all
+(`docs/decisions/2026-08-16-drop-codex-integration.md`). Work handed to Codex
+runs with no DevOS rules of any kind. Restate the ones that matter in the
+handoff itself.
 
 ## Skills
 
