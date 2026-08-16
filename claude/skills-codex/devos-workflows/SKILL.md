@@ -112,7 +112,7 @@ logs, and anything project-specific (that belongs in the project's own repo).
 
 ## What stays Claude Code only
 
-`/devos-promote` (writes into permanent memory), `/devos-consolidate` (proposes rewriting
-existing memory), `/devos-mission-control` (publishes a hosted dashboard), and
-`/devos-operate` (multi-agent orchestration) have no Codex equivalent. If work needs one,
-say so and hand it back rather than improvising a substitute.
+`/devos-promote` (writes into permanent memory), `/devos-mission-control` (publishes a
+hosted dashboard), and `/devos-operate` (multi-agent orchestration) have no Codex
+equivalent. If work needs one, say so and hand it back rather than improvising a
+substitute.
